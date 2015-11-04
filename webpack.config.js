@@ -38,12 +38,17 @@ module.exports = {
     }
   },
   module: {
-    preLoaders: [{
-      test: /\.(js|jsx)$/,
-      exclude: /node_modules/,
-      loader: 'eslint-loader'
-    }],
-    loaders: [{
+    // preLoaders: [{
+    //   test: /\.(js|jsx)$/,
+    //   exclude: /node_modules/,
+    //   loader: 'eslint-loader'
+    // }],
+    loaders: [
+      {
+       test: /\.handlebars$/,
+       loader: "handlebars-loader"
+     },
+     {
       test: /\.(js|jsx)$/,
       exclude: /node_modules/,
       loader: 'react-hot!babel-loader'
@@ -58,6 +63,10 @@ module.exports = {
       loader: 'url-loader?limit=8192'
     }]
   },
+
+  node: {  // this is for pixi.js
+       fs: "empty"
+   },
 
   plugins: [
     new webpack.HotModuleReplacementPlugin()

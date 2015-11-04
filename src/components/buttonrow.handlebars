@@ -1,0 +1,13 @@
+<div class="button-row">
+  <button class="show-all-text" title="focus on this block">
+    <i class="fa fa-pencil-square-o"></i>
+  </button>
+  {{#if hasChildren}}
+  <button class="hierarchy-zoom" title="zoom to this block and its children">
+    <i class="fa fa-sitemap"></i>
+  </button>
+  {{/if}}
+  <button class="delete" title="delete this block and all children">
+    <i class="fa fa-times"></i>
+  </button>
+</div>

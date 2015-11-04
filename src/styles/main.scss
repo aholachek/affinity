@@ -1,204 +1,478 @@
-@import "../../node_modules/bourbon/app/assets/stylesheets/_bourbon";
+@import '../../node_modules/bourbon/app/assets/stylesheets/_bourbon';
+@import './drop';
 
+/* variables */
+$primary: #5f7df6;
+$background: #fff;
+$block: #5881ff;
+$text: gray;
+$success: #5ed8a8;
+$warning: #e57373;
+$highlight-color: #4fc3f7;
+
+/* base rules */
 html {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
-*, *:before, *:after {
-  box-sizing: inherit;
-}
-
-$background : #353535;
-$block :  rgba(255, 255, 255, 0.7);
-$success : #72c089;
-$text : darken($background, 15%);
-
+html,
 body {
-  background-color: $background;
-  color: $text;
-  font-family: "Helvetica Neue", Helvetica, Verdana, sans-serif;
-  font-weight: 300;
-  font-size : 14px;
+    height: 100%;
+}
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+body {
+    overflow-x: hidden;
+    max-width: 100%;
+    color: $text;
+    font-weight: bold;
+    font-size: 12px;
+    font-family: Verdana, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+*:focus {
+    outline: thin dotted;
 }
 
-.json-export {
-  float: right;
+/* utilities */
+
+.pull-right {
+    float: right;
 }
-.show-all {
-  float: left;
-  display:none;
+.cf:before,
+.cf:after {
+    display: table;
+    content: ' ';
+}
+.cf:after {
+    clear: both;
+}
+
+/* modules */
+
+.btn {
+    padding: 11px;
+    border: none;
+    background: none;
+    color: white;
+    @include transition(background-color, .3s);
+}
+
+
+
+i.fa-sitemap {
+    @include transform(rotate(-90deg));
+}
+.drop-content {
+    min-height: 55px;
+}
+.delete-everything {
+    color: $warning;
+}
+
+.dropdown-list {
+    padding-left: 0;
+    list-style: none;
+    button {
+        width: 100%;
+        &:hover {
+            background-color: lighten(#000, 25%);
+        }
+    }
+}
+.subtle-button {
+    background: #484848;
+    color: $success;
+    @extend .btn;
+    &:hover {
+        background: darken(#484848, 5%);
+    }
 }
 .top-row {
-  padding: 10px;
-  text-align: center;
-
-  h1 {
-    font-weight: 300;
-    color: $block;
-    display: inline;
-  }
+    position: fixed;
+    z-index: 9;
+    width: 100%;
+    height: 100px;
 }
+#content {
+    position: relative;
+    z-index: 0;
+    overflow: hidden;
+    @include transition(transform .3s ease-in);
 
-
-.chart {
-display: block;
-font-size: 14px;
-position: relative;
-z-index: 0;
-padding: 15px;
-height: 90vh
+    .overlay {
+          background: hsla(0,0,0,.7);
+          opacity: 0;
+          @include transition(opacity .3s ease-in);
+    }
 }
-
-.card-creation-container {
-
-  text-align: center;
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.8);
-  z-index: 1;
-  position: relative;
-  @include transition(transform .4s ease-in);
-  min-height: 100vh;
-
-  textarea {
-      display: block;
-      min-height: 50px;
-      background: #eae9e9;
-      color: #494949;
-      margin: 20px auto;
-      padding: 10px;
-      width: 250px;
-      border:none;
+#content.has-overlay {
+    .overlay {
+        position: absolute;
+        right: 0;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 6;
+        opacity: 1;
+    }
+}
+.card-creation-dropdown {
+    position: relative;
+    z-index: 1;
+    padding: 10px;
+    background: rgba(0, 0, 0, .85);
+    text-align: center;
+    opacity: 0;
+    @include transform(translateY(-100%));
+    @include transition(all .3s ease-in);
+    textarea {
+        display: block;
+        margin: 20px auto;
+        padding: 10px;
+        min-height: 60px;
+        width: 300px;
+        border: none;
+        background: #ebf0ff;
+        color: #494949;
+        font-weight: 200;
+    }
+}
+.intro-instructions {
+    margin: auto;
+    margin-top: 20vh;
+    min-width: 500px;
+    width: 50%;
+    background-color: #fff;
+    b {
+        color: darken($text, 30%);
+    }
+}
+.heading {
+    position: relative;
+    z-index: 3;
+    background-color: #2d2d2d;
+    color: lighten($primary, 10%);
+    h1,
+    h2 {
+        display: inline-block;
+        margin: 0;
+        padding: 10px;
+        font-size: 1.5em;
+    }
+    .project-title {
+        color: #fff;
+        font-weight: 200;
+    }
+    .fa-pencil {
+        font-size: 18px;
+    }
+}
+.edit {
+    border: none;
+    background-color: rgba(0, 0, 0, 0);
+    color: $primary;
+    &:hover {
+        color: darken($primary, 5%);
+    }
+}
+.toolbar {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 50px;
+    background: #404040;
+    ul {
+        position: relative;
+        z-index: 2;
+        margin: 0;
+        padding: 5px 15px;
+        list-style: none;
+        li {
+            display: inline-block;
+        }
     }
 }
 
+#content {
+    background: $background;
+}
 
 .toggle-creation-container {
-  height: 70px;
-  width: 65px;
-  background: rgba(0, 0, 0, 0.8);
-  position: absolute;
-  top: -59px;
-  right: 4%;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  border: none;
-  @include transition(transform, .4s ease-in);
-
-  .arrow {
-    @include transition(transform, .4s ease-in);
-    &:before {
-      content : "^";
-      font-size: 44px;
-      color: rgba(255, 255, 255, 0.79);
-      position: relative;
-      top: 10px;
-    }
-  }
-}
-
-
-.card-creation-container.transformed-up {
-  @include transform(translateY(-75vh));
-
-  .arrow {
-    @include transform(rotate(-180deg) translateY(-10px));
-  }
-}
-
-
-.add-top-level-block {
-  &:hover {
-    background-color: $block;
-  }
-}
-
-.container {
-  background: $block;
-  color: #494949;
-  cursor: pointer;
-  text-overflow : ellipsis;
-  overflow: hidden;
-}
-
-.block {
-
-@extend .container;
-position:absolute;
-z-index: 1;
-display: flex;
-justify-content:center;
-align-content:center;
-flex-direction:column;
-text-align: center;
-cursor: pointer;
-
-span {
-  width: 85%
-}
-
-}
-
-.to-add-block {
-
-  @extend .container;
-  background: #E3E3E3;
-  color: #494949;
-  margin: 10px;
-  padding: 10px;
-  width: 250px;
-  text-align: left;
-  z-index: 2;
-  position:relative;
-  min-height: 100px;
-
-}
-
-
-.to-add-container {
-  display: flex;
-  flex-wrap: wrap;
-  min-height: 100px;
-}
-
-.block:not(.being-dragged), .to-add-block:not(.being-dragged){
-@include transition(transform .4s ease-in, width .4s  ease-in, height .4s  ease-in, box-shadow .2s ease-in, background-color .2s ease-in);
-}
-
-
-button.delete {
-  @include transition(color .2s ease-in);
-
-  color: darken($background, 3%);
-  position: absolute;
-    top: 0;
-    right: 0;
-    background-color: transparent;
-    border: none;
-    font-weight: 600;
-    font-size: 16px;
-
+    background: $success;
+    @extend .btn;
     &:hover {
-      color: #fff;
+        background: darken($success, 15%);
+    }
+    i {
+        @include transition(all .3s);
+        @include transform(rotate(0deg));
+
     }
 }
+#content.show-create-dropdown {
 
-
+    .card-creation-dropdown {
+      opacity: 1;
+        @include transform(translateY(0%));
+    }
+    .toggle-creation-container i {
+        @include transform(rotate(-180deg));
+    }
+}
+.chart-wrapper {
+    margin: 110px 15px 15px;
+}
+.chart {
+    position: relative;
+    overflow: hidden;
+}
+.top-level-block {
+    position: relative;
+    z-index: 2;
+    float: left;
+    min-height: 520px;
+    width: 40px;
+    background: $block;
+    color: #fff;
+    @include transition(background-color .3s);
+    i.fa-home {
+        padding: 10px 0 0 7px;
+        font-size: 2em;
+        cursor: pointer;
+    }
+    i.fa-home.active {
+        color: $success;
+        cursor: pointer;
+        &:hover {
+            color: darken($highlight-color, 20%);
+        }
+    }
+    &.hover-add {
+        background-color: $success;
+        color: #fff !important;
+    }
+    span {
+        position: relative;
+        top: 170px;
+        left: -170px;
+        display: block;
+        width: 377px;
+        font-style: italic;
+        @include transform(rotate(-90deg));
+    }
+}
+.container {
+    overflow: hidden;
+    background: $block;
+    color: #494949;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+.button-row {
+    min-width: 140px;
+    text-align: center;
+}
+.block {
+    position: absolute;
+    z-index: 1;
+    color: #fff;
+    cursor: pointer;
+    @include transition(background-color .2s ease-in, opacity .5s);
+    @extend .container;
+    align-items: center;
+    .overlay-content {
+        display: none;
+        white-space: wrap;
+        *[contenteditable] {
+            overflow: auto;
+            margin: 10px;
+            padding: 20px;
+            min-height: 200px;
+            background: #fff;
+            color: $text;
+            color: $text;
+        }
+    }
+    &.has-children:not(.card-overlay):hover {
+        background-color: lighten($primary, 4%);
+    }
+    .not-overlay {
+        width: 100%;
+        &:hover {
+            opacity: 0.85;
+        }
+    }
+    .text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        display: block;
+        overflow: hidden;
+        max-height: 90%;
+        width: 90%;
+        text-overflow: ellipsis;
+        transform: translate(-50%, -50%);
+    }
+}
+.block.no-text {
+    .text {
+        display: none;
+    }
+}
+.btn-compact,
+.btn-expand {
+    background-color: #484848;
+}
+.btn-compact {
+    position: relative;
+    left: -5px;
+}
+.btn-compact.active,
+.btn-expand.active {
+    background-color: $primary;
+}
+.compact-btn-container {
+    margin-left: 6%;
+}
+%action-button {
+    margin-left: 3%;
+    border: none;
+    border-radius: 4px;
+    background-color: transparent;
+    color: $text;
+    font-size: 16px;
+    cursor: pointer;
+    @include transition(color .3s ease-in);
+    i {
+        font-size: 1.5em !important;
+    }
+}
+button.hierarchy-zoom {
+    color: $highlight-color;
+    @extend %action-button;
+    &:hover {
+        color: darken($highlight-color, 30%);
+    }
+}
+.block:not(.has-children) .hierarchy-zoom {
+    visibility: hidden;
+}
+button.delete {
+    float: right;
+    color: $warning;
+    @extend %action-button;
+    &:hover {
+        color: darken($warning, 20%);
+    }
+}
+button.show-all-text {
+    float: left;
+    color: $block;
+    @extend %action-button;
+    &:hover {
+        color: darken($block, 10%);
+    }
+}
+.to-add-block {
+    position: relative;
+    z-index: 2;
+    float: left;
+    margin: 10px;
+    padding: 10px;
+    min-height: 100px;
+    width: 250px;
+    background-color: #fff;
+    color: #494949;
+    text-align: left;
+    @extend .container;
+    button.delete {
+        position: absolute;
+        top: 0;
+        right: 0;
+    }
+}
+.to-add-container {
+    min-height: 100px;
+}
+.card-overlay {
+    z-index: 7;
+    cursor: default;
+    .text {
+        display: block;
+    }
+    &:hover {
+        .text {
+            display: block;
+        }
+    }
+    .overlay-container {
+        padding-top: 45px;
+        width: 100%;
+        height: 100%;
+    }
+    .overlay-content {
+        display: block;
+        margin: auto;
+        width: 90%;
+    }
+    .not-overlay {
+        display: none;
+    }
+}
+.explanation {
+    font-weight: 200;
+    font-style: italic;
+}
+.back-to-chart {
+    margin-right: 10px;
+    background-color: lighten($primary, 11%);
+    &:hover {
+        background-color: lighten($primary, 6%);
+    }
+}
 .block:not(.top-level-block):not(.hover-add).hovered {
-  background: rgba(255, 255, 255, .9);
+    background-color: $highlight-color;
 }
-
 .block.hover-add {
- background-color: $success;
+    background: $success !important;
+    color: white;
 }
-
+.block.show-all-hover {
+    background: darken($primary, 10%) !important;
+}
 .block.highlight-delete {
-  background :  #deabba !important;
+    background: $warning !important;
 }
-
-.block.being-dragged {
-  background: rgba(255, 255, 255, .9);
-  z-index: 4;
+.being-dragged {
+    z-index: 4;
+    opacity: 0.75 !important;
 }
-
 .hidden {
-  display : none !important;
+    display: none !important;
+}
+.hidden-parent {
+    display: none !important;
+}
+.block:not(.has-children) {
+    background: desaturate($block, 55%);
+    &:not(.card-overlay):hover {
+        background-color: lighten(desaturate($block, 60%), 5%);
+    }
+}
+.btn-text {
+    display: none;
+}
+@media screen and (min-width: 520px) {
+    body {
+        font-size: 14px;
+    }
+    .pull-right-large {
+        float: right;
+    }
+    .btn-text {
+        display: inline-block;
+    }
 }
