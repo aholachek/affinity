@@ -1,0 +1,204 @@
+@import "../../node_modules/bourbon/app/assets/stylesheets/_bourbon";
+
+html {
+  box-sizing: border-box;
+}
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+$background : #353535;
+$block :  rgba(255, 255, 255, 0.7);
+$success : #72c089;
+$text : darken($background, 15%);
+
+body {
+  background-color: $background;
+  color: $text;
+  font-family: "Helvetica Neue", Helvetica, Verdana, sans-serif;
+  font-weight: 300;
+  font-size : 14px;
+}
+
+.json-export {
+  float: right;
+}
+.show-all {
+  float: left;
+  display:none;
+}
+.top-row {
+  padding: 10px;
+  text-align: center;
+
+  h1 {
+    font-weight: 300;
+    color: $block;
+    display: inline;
+  }
+}
+
+
+.chart {
+display: block;
+font-size: 14px;
+position: relative;
+z-index: 0;
+padding: 15px;
+height: 90vh
+}
+
+.card-creation-container {
+
+  text-align: center;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 1;
+  position: relative;
+  @include transition(transform .4s ease-in);
+  min-height: 100vh;
+
+  textarea {
+      display: block;
+      min-height: 50px;
+      background: #eae9e9;
+      color: #494949;
+      margin: 20px auto;
+      padding: 10px;
+      width: 250px;
+      border:none;
+    }
+}
+
+
+.toggle-creation-container {
+  height: 70px;
+  width: 65px;
+  background: rgba(0, 0, 0, 0.8);
+  position: absolute;
+  top: -59px;
+  right: 4%;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border: none;
+  @include transition(transform, .4s ease-in);
+
+  .arrow {
+    @include transition(transform, .4s ease-in);
+    &:before {
+      content : "^";
+      font-size: 44px;
+      color: rgba(255, 255, 255, 0.79);
+      position: relative;
+      top: 10px;
+    }
+  }
+}
+
+
+.card-creation-container.transformed-up {
+  @include transform(translateY(-75vh));
+
+  .arrow {
+    @include transform(rotate(-180deg) translateY(-10px));
+  }
+}
+
+
+.add-top-level-block {
+  &:hover {
+    background-color: $block;
+  }
+}
+
+.container {
+  background: $block;
+  color: #494949;
+  cursor: pointer;
+  text-overflow : ellipsis;
+  overflow: hidden;
+}
+
+.block {
+
+@extend .container;
+position:absolute;
+z-index: 1;
+display: flex;
+justify-content:center;
+align-content:center;
+flex-direction:column;
+text-align: center;
+cursor: pointer;
+
+span {
+  width: 85%
+}
+
+}
+
+.to-add-block {
+
+  @extend .container;
+  background: #E3E3E3;
+  color: #494949;
+  margin: 10px;
+  padding: 10px;
+  width: 250px;
+  text-align: left;
+  z-index: 2;
+  position:relative;
+  min-height: 100px;
+
+}
+
+
+.to-add-container {
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 100px;
+}
+
+.block:not(.being-dragged), .to-add-block:not(.being-dragged){
+@include transition(transform .4s ease-in, width .4s  ease-in, height .4s  ease-in, box-shadow .2s ease-in, background-color .2s ease-in);
+}
+
+
+button.delete {
+  @include transition(color .2s ease-in);
+
+  color: darken($background, 3%);
+  position: absolute;
+    top: 0;
+    right: 0;
+    background-color: transparent;
+    border: none;
+    font-weight: 600;
+    font-size: 16px;
+
+    &:hover {
+      color: #fff;
+    }
+}
+
+
+.block:not(.top-level-block):not(.hover-add).hovered {
+  background: rgba(255, 255, 255, .9);
+}
+
+.block.hover-add {
+ background-color: $success;
+}
+
+.block.highlight-delete {
+  background :  #deabba !important;
+}
+
+.block.being-dragged {
+  background: rgba(255, 255, 255, .9);
+  z-index: 4;
+}
+
+.hidden {
+  display : none !important;
+}
