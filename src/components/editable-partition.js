@@ -223,8 +223,18 @@ var nodeData = partition.nodes(this.data.root);
         .classed("fa fa-times", true);
 
     enter
-    .append("span")
-    .text(function(d) { return d.depth !== 0 ? d.name : ""; });
+    .append("textarea")
+    .text(function(d){
+        return d.depth !== 0 ? d.name : "";
+    })
+    // .style("display", none);
+    //
+    // enter
+    // .append("span")
+    // .text(function(d) { return d.depth !== 0 ? d.name : ""; })
+    // .on("click", function(){
+    //
+    // });
 
     //working with update selection
 
