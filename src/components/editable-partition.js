@@ -2,80 +2,63 @@
 
 "use strict";
 
+var containerTemplate = require("./container.handlebars");
+var overlayTemplate = require("./overlay.handlebars");
+var blockTemplate = require("./block.handlebars");
+var buttonRowTemplate = require('./buttonrow.handlebars');
 
 var d3 = require("d3");
 var _ = require("underscore");
-
-
-//accessible vars
-var w,
-    h,
-    x,
-    y,
-    kx, //defined in updateBlocks
-    ky,
-    partition,
-    vis,
-    dataChangeCallback,
-    d3El;
+var Drop = require('tether-drop');
 
 
 function EditablePartition(config){
   this.el = config.el;
+  //defined in 'render'
+  this.partition = undefined;
+  this.state = {
+    drop : undefined,
+    overlay : undefined,
+    currentTopLevel : undefined,
+    compact : false
+  };
+
   var localData;
   if (localStorage.affinityDiagram) localData = JSON.parse(localStorage.affinityDiagram);
 
   this.data = config.data || localData || {};
-  this.data = _.extend({root : {name : "topLevelNode", children : [] }, toAdd : [], currentTopLevel : {}}, this.data);
-  dataChangeCallback = config.dataChangeCallback || function(){};
+  this.data = _.extend({root : {name : undefined, children : [], id : 1, size : 1 },
+                                  toAdd : []
+                        }, this.data
+                      );
 
 }
 
 //called only 1x, setting up the graph
 EditablePartition.prototype.render = function(){
 
-  d3El = d3.select(this.el).html("");
+  var d3El = d3.select(this.el).html(containerTemplate({ projectTitle : this.data.root.name }));
   var that = this;
-  w = window.innerWidth;
-  //104 is default height of .card-creation-container
-  h = window.innerHeight - .22 * window.innerHeight,
-  x = d3.scale.linear().range([0, w]),
-  y = d3.scale.linear().range([0, h]);
 
-  var topRow = d3El.append("div").classed("top-row", true);
-   topRow.append("button")
-   .classed("show-all", true)
-    .text("return to top level")
+  d3El.select(".show-all")
     .on("click", function(){
-          that.data.currentTopLevel = undefined;
+          that.state.currentTopLevel = that.data.root.id;
           that.update();
         });
 
 
-  vis = d3El.append("div")
-    .attr("class", "chart");
-
-  var created = d3El.append("div").classed("card-creation-container", true);
-
-  var button = created.insert("div")
-  .classed("toggle-creation-container", true);
-
-  button.append("div").classed("arrow", true);
-  button.on("click", function(){
-    if (created.classed("transformed-up")){
-      created.classed("transformed-up", false);
+  d3El.select(".toggle-creation-container").on("click", function(){
+    if (d3El.classed("show-create-dropdown")){
+      d3El.classed("show-create-dropdown", false);
     }
     else {
-      created.classed("transformed-up", true);
+      d3El.classed("show-create-dropdown", true);
     }
   });
 
- var createBlock = created.append("div")
- .classed("create-block", true);
+ var createBlock = d3El.select(".to-add-container");
 
-createBlock
-  .append("textarea")
-  .attr("placeholder", "Type and press enter to create a card")
+d3El.select(".create-block textarea")
   .on("keypress", function(e){
       if (d3.event.which == 13){
         var t = this;
@@ -91,28 +74,110 @@ createBlock
       }
   });
 
+    this.partition = d3.layout.partition()
+    .value(function(d) {
+      //right now, 1 entry = 1 point
+      return 1;
+    })
+    .sort(function(a,b){
+      //so that a block with a child will read as bigger than a block w/no children
+      //this only works since all blocks have a val of 1
+      var aVal = getAllChildren(a).length;
+      var bVal = getAllChildren(b).length;
+      if (aVal !== bVal){
+        return bVal - aVal;
+      } else {
+        return b.id - a.id;
+      }
+    });
 
- created.append("div")
-    .classed("to-add-container", true);
-
-    partition = d3.layout.partition()
-    .value(function(d) { return d.size; });
-
-this.update();
-//further calls to render just update the graph
-this.render = EditablePartition.prototype.update;
+    //set initial current top level
+    this.state.currentTopLevel = this.data.root.id;
 
 //listen to window resize, automatically call update
 window.onresize = function(){
-    w = window.innerWidth;
-    //104 is default height of .card-creation-container
-    h = window.innerHeight - 104 + 30,
-    x = d3.scale.linear().range([0, w]),
-    y = d3.scale.linear().range([0, h]);
+    if (that.state.cardOverlay) return;
     that.update();
   }
 
+  d3El.on("click", function(){
+    if (d3.event.target.classList.contains("overlay")){
+      that.removeOverlay();
+    }
+  });
+
+  d3.select(".delete-everything").on("click", function(){
+    that.data = {root : {name : "topLevelNode", children : [], id : 1, size : 1 }, toAdd : [], currentTopLevel : undefined};
+    that.update();
+  });
+
+  d3.select(".download-as-json").on("click", function(){
+
+    //prevent circular references
+    removeParents(that.data.root)
+    //get a copy
+    var data = cleanDataForJSONExport(that.data.root);
+    cleanDataForJSONExport(data);
+
+    var data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+    var span  = d3.select("#content").append("span").html('<a href="data:' + data + '" download="data.json">download JSON</a>');
+      span.select("a")[0][0].dispatchEvent(new MouseEvent('click', {
+      'view': window,
+      'bubbles': true,
+      'cancelable': true
+    }));
+
+    span.remove();
+
+  });
+
+  d3El.select(".btn-expand").on("click", function(){
+    that.state.compact = false;
+    that.update();
+  });
+
+  d3El.select(".btn-compact").on("click", function(){
+    that.state.compact = true;
+    that.update();
+  })
+
+  //after events have already been attached to the buttons,
+  //since this removes html
+  var dropdownDrop = new Drop({
+        target: document.querySelector('.dropdown-button'),
+        content: document.querySelector('.dropdown-hidden ul'),
+        openOn: 'click',
+        position: "bottom right",
+        classes: 'drop-theme-arrows-bounce-dark'
+      });
+
+//allow title edits
+  d3.select(".project-title").on("blur", function(){
+    that.data.root.name = this.textContent.trim();
+    that.update();
+  });
+
+  this.update();
+  //further calls to render just update the graph
+  this.render = EditablePartition.prototype.update;
+
 };
+
+EditablePartition.prototype.removeOverlay = function(){
+
+  var overlayBlock = d3.select(this.state.cardOverlay);
+
+    this.state.cardOverlay = false;
+    d3.select("#content").classed("overlay", false);
+    overlayBlock
+    .style("z-index", "10")
+    .classed("card-overlay", false)
+    .select(".overlay-container").html("");
+    this.update();
+    setTimeout(function(){
+      overlayBlock.style("z-index", null);
+    })
+}
 
 EditablePartition.prototype.addBlock = function(text){
   this.data.toAdd.push({name : text, children : [], id : new Date().getTime(), size : 1});
@@ -120,20 +185,24 @@ EditablePartition.prototype.addBlock = function(text){
 }
 
 function updateToAdd (){
-    var toAdd = d3El.select(".to-add-container")
-      .selectAll(".to-add-block")
+  var that = this;
+  var toAdd = d3.select(this.el).select(".to-add-container");
+
+  var toAddJoin = toAdd.selectAll(".to-add-block")
       .data(this.data.toAdd, function(d){return d.id});
 
-    var toAddBlocks = toAdd
+  var enter = toAddJoin
       .enter()
       .append("div")
-      .classed("to-add-block", true);
-
-    toAddBlocks
+      .classed("to-add-block", true)
       .text(function(d){return d.name});
 
-    toAddBlocks
-        .append("button")
+    enter
+      .append("button")
+        .on("mousedown", function(){
+          //prevent drag listener from hijacking
+          d3.event.stopPropagation();
+        })
         .on("click", function(d){
           that.data.toAdd = _.without(that.data.toAdd, d);
           that.update();
@@ -142,157 +211,334 @@ function updateToAdd (){
         .append("i")
         .classed("fa fa-times", true);
 
-      toAdd.exit().remove();
+    toAddJoin.exit().remove();
+
+    var dragToAdd = d3.behavior.drag()
+                   .on("dragstart", function(){
+                      d3.select("#content").classed("show-create-dropdown", false);
+                      d3.select(this).classed("being-dragged", true);
+                    })
+                    .on('drag', function(d) {
+
+                      var translateX =  d3.event.x,
+                          translateY = d3.event.y;
+
+                       d3.select(this).style("transform", "translate(" + translateX + "px," +  translateY + "px)");
+                       highlightHoveredRect(d3.event, this);
+                      })
+                    .on('dragend', function(){
+
+                      var block = d3.selectAll(".inclusive-block"),
+                          hovered = [].slice.apply(document.querySelectorAll(".inclusive-block"))
+                          .filter(function(el){ if (el.classList.contains("hover-add") ){
+                            return true
+                          }});
+
+                      document.querySelector(".to-add-container").appendChild(this);
+
+                      if ( hovered.length ){
+                        //top level block doesnt have data
+                        var data = hovered[0].classList.contains("top-level-block")? that.data.root : hovered[0].__data__;
+                        that.data.toAdd = _.without(that.data.toAdd, this.__data__);
+                        addNode(this.__data__, data, that.data.root);
+                        that.update();
+                      }
+                      else {
+                        //put the dragged elements back where they came from
+                        d3.select(this)
+                        .classed("being-dragged", false)
+                        .style("transform", function(d) {
+                          return "translate(0px,0px)";
+                      });
+                    }
+                    //re-show card creation container
+                    if (that.data.toAdd.length >= 1){
+                      d3.select("#content").classed("show-create-dropdown", true);
+                    }
+                    block.classed({"being-dragged" : false, "hover-add" : false});
+                    });
+
+enter.on("mousedown", function(d){
+//append to chart
+  var initialPosition = this.getBoundingClientRect();
+  document.querySelector("#content").appendChild(this);
+   var newPosition = this.getBoundingClientRect();
+   //make adjustments
+   var origin = [initialPosition.left - newPosition.left, initialPosition.top - newPosition.top];
+   dragToAdd.origin(function(){return {x : origin[0], y : origin[1]}});
+   d3.select(this).style("transform", "translate(" + origin[0] + "px," + origin[1] + "px)");
+   //set drag behavior origin
+}).call(dragToAdd);
+
 }
 
 function updateChart (){
 
-var nodeData = partition.nodes(this.data.root);
-//any data processing that should be done right before updating
-  nodeData.forEach(function(n){
+var d3El = d3.select(this.el).select(".chart"),
+    nodeData = this.partition.nodes(this.data.root);
+
+    d3.selectAll(".drop").remove();
+
+var w = document.querySelector(".chart").clientWidth - 43 //43 is the width of the first block, kind of hacky,
+    h = window.innerHeight - 100 - 15; //padding + toolbar
+
+    //if chart is imported from elsewhere
+    _.each(nodeData, function(n){
       if (!n.id){
-        n.id = new Date().getTime();
+        n.id = _.uniqueId();
+        n.size = 1;
+        n.value = null;
       }
     });
 
-  this.data.currentTopLevel = "1";
+    nodeData = this.partition.nodes(this.data.root);
 
-  // this.data.currentTopLevel = this.data.currentTopLevel || this.data.root.id;
+    this.state.currentTopLevel = this.state.currentTopLevel ? this.state.currentTopLevel : this.data.root.id;
 
-  //show the "show all button if we are not at the top of the hierarchy"
-  if (this.data.currentTopLevel  !== this.data.root.id ){
-    vis.select(".show-all").style("display", "block");
-  }
-  else {
-    vis.select(".show-all").style("display", "none");
-  }
+    d3.selectAll(".compact-btn-container button").classed("active", false);
+
+    if (this.state.compact){
+        d3.select(".btn-compact").classed("active", true);
+    }
+    else {
+      d3.select(".btn-expand").classed("active", true);
+    }
 
 //define variables
 
-    var block = vis.selectAll(".block"),
-        dataJoin = block.data(nodeData, function(d){ return d.id }),
+    var block = d3El.selectAll(".block"),
         that = this,
-        nodeData = partition.nodes(this.data.root),
-        currentTopLevel = _.findWhere(nodeData, {id : this.data.currentTopLevel});
+        minWidth = 80,
+        maxLevels = Math.floor(w/minWidth),
+        currentTopLevel = _.findWhere(nodeData, {id : this.state.currentTopLevel});
+
+    nodeData = _.filter(nodeData, function(f){
+        //if hierarchy goes too far, just show top n levels
+        //remember that depth is zero indexed
+      if ( f.depth - currentTopLevel.depth < maxLevels -1) { return true }
+    });
+
+    var dataJoin = block.data(nodeData, function(d){ return d.id }),
+    numLevels = _.max(nodeData.map(function(n){return n.depth})) - currentTopLevel.depth;
+    numLevels = currentTopLevel.depth > 0 ? numLevels += 1 : numLevels;
+
+    var topLevelBlockWidth = 43; //40 + padding
+
+    if (currentTopLevel.depth > 0){
+      d3.select(".top-level-block .fa-home").classed("active", true)
+    }
+    else {
+      d3.select(".top-level-block .fa-home").classed("active", false)
+    }
+
+    //remove exit selection
+    dataJoin.exit().transition().style("opacity", 0).remove();
+
+    //utility function for closing dropdowns
+    function closeDrops(node){
+      d3.selectAll(".drop").remove();
+      if ( that.state.drop === node){
+        that.state.drop = null
+        return false
+      }
+      else {
+        return true
+      }
+    }
 
     //enter the necessary elements
     var enter =  dataJoin.enter()
-        .append("div")
-        .classed("block", true)
-        .on("click", function(d){
-          d3.event.stopPropagation();
-          if (!d.children) return;
-          that.data.currentTopLevel = d.id;
-          that.update();
-        })
-        .on("mouseenter", function(d){
-          if (d.name == "topLevelNode") return;
-            var childNodes = getAllChildNodes(this);
-            d3.select(this).classed("hovered", true);
-            d3.selectAll(childNodes).classed("hovered", true);
-        })
-        .on("mouseleave", function(d){
-          var childNodes = getAllChildNodes(this);
-          d3.select(this).classed("hovered", false);
-          d3.selectAll(childNodes).classed("hovered", false);
-        });
+                  .append("div")
+                  .classed("block", true)
+                  .on("click", function(d){
+                    //toggles current drop
+                    if (!closeDrops(this)) return;
+                    if (d.dragged) return;
+                    //if currently in overlay state, return
+                    if (this.classList.contains("card-overlay")) return;
 
-      enter
-        .append("button")
-        .on("click", function(d){
-          removeNode(d, that.data.root);
-          that.update();
-        })
-        .on("mouseenter", function(d){
-          var children = getAllChildNodes(this);
-          children.push(this.parentElement);
-          d3.selectAll(children).classed("highlight-delete", true);
-        })
-        .on("mouseleave", function(d){
-          var children = getAllChildNodes(this);
-          children.push(this.parentElement);
-          d3.selectAll(children).classed("highlight-delete", false);
-        })
-        .classed("delete", true)
-        .style("display", function(d){
-          if (d.depth == 0){
-            return "none"
-          }
-        })
-        .append("i")
-        .classed("fa fa-times", true);
+                    var dropInstance = new Drop({
+                        target: this,
+                        content: buttonRowTemplate({ hasChildren : d.children && d.children.length }),
+                        classes: 'drop-theme-arrows-bounce-dark',
+                        position: 'bottom left',
+                        openOn: null
+                      });
+                      dropInstance.open();
+                      that.state.drop = this;
+                      addButtonEvents(dropInstance.content, this);
+                  })
+                  .classed("hidden",  function(d){
+                          //always hide top level node
+                          if (d.depth === 0) return true
+                    })
+                  .classed("inclusive-block", function(d){
+                         //always hide top level node
+                         //this class also belongs to left hand home block
+                         if (d.depth > 0) return true
+                       })
+                  .style("opacity", 0)
+                  .html(blockTemplate())
 
-    enter
-    .append("textarea")
-    .text(function(d){
-        return d.depth !== 0 ? d.name : "";
-    })
-    // .style("display", none);
-    //
-    // enter
-    // .append("span")
-    // .text(function(d) { return d.depth !== 0 ? d.name : ""; })
-    // .on("click", function(){
-    //
-    // });
 
-    //working with update selection
+      function addButtonEvents(dropdownEl, blockEl){
+          var buttonRow = d3.select(dropdownEl).select(".button-row");
 
-    //padding for ability to click back if not the top level
-    kx = (currentTopLevel.y ? w - 40 : w) / (1 - currentTopLevel.y);
-    ky = h / currentTopLevel.dx;
-    x.domain([currentTopLevel.y, 1]).range([currentTopLevel.y ? 40 : 0, w]);
-    y.domain([currentTopLevel.x, currentTopLevel.x + currentTopLevel.dx]);
+              buttonRow.select(".hierarchy-zoom")
+                    .on("click", function(d){
+                      if (d3.event.defaultPrevented) return;
+                      if (!blockEl.__data__.children) return;
+                      that.state.currentTopLevel = blockEl.__data__.id;
+                      that.update();
+                    })
+                    .on("mouseenter", function(d){
+                      if (blockEl.__data__.name == "topLevelNode") return;
+                        var childNodes = getAllChildNodes(blockEl);
+                        d3.select(blockEl).classed("hovered", true);
+                        d3.selectAll(childNodes).classed("hovered", true);
+                    })
+                    .on("mouseleave", function(d){
+                      var childNodes = getAllChildNodes(blockEl);
+                      d3.select(blockEl).classed("hovered", false);
+                      d3.selectAll(childNodes).classed("hovered", false);
+                    });
 
-    var topLevelNode = dataJoin.filter(function(d){
-      return d.id == currentTopLevel.id;
-    })[0][0];
-    var parentNode = dataJoin.filter(function(d){
-      if (currentTopLevel.parent) return d.id == currentTopLevel.parent.id;
-    })[0][0];
-    var currentChildren = getAllChildNodes(topLevelNode);
-    //push current node
-      currentChildren.push(topLevelNode);
-      if (currentTopLevel.parent){
-        currentChildren.push(parentNode);
+            buttonRow.select(".delete")
+                    .on("click", function(d){
+                      removeNode(blockEl.__data__, that.data.root);
+                      that.update();
+                    })
+                    .on("mouseenter", function(d){
+                      var children = getAllChildNodes(blockEl);
+                      children.push(blockEl);
+                      d3.selectAll(children).classed("highlight-delete", true);
+                    })
+                    .on("mouseleave", function(d){
+                      var children = getAllChildNodes(blockEl);
+                      children.push(blockEl);
+                      d3.selectAll(children).classed("highlight-delete", false);
+                    });
+
+            buttonRow.select(".show-all-text")
+              .on("click", function(){
+                closeDrops(blockEl);
+                that.state.cardOverlay = blockEl;
+                d3.select("#content").classed("overlay", true);
+                var d3Block = d3.select(blockEl);
+
+                d3Block
+                .classed("card-overlay", true)
+                .transition()
+                .style("width", "600px")
+                .style("height", "400px")
+                .styleTween('transform', function(d){
+
+                  var translateX = document.querySelector(".chart").innerWidth/2 - 300,
+                      translateY = d3.max([0, document.querySelector(".chart").innerHeight/2 - 300]),
+                      start = this.style.transform,
+                      end = 'translate('+ translateX +'px,' + translateY + 'px)';
+
+                  return d3.interpolateString(start, end);
+                });
+
+              d3Block
+                .select(".overlay-container")
+                .html(overlayTemplate({text : blockEl.__data__.name }))
+                //prevent interaction with drag handler
+                .on("mousedown", function(){
+               d3.event.stopPropagation();
+             })
+             .select("div[contenteditable]").on("keypress", function(d){
+               d.name = this.textContent.trim();
+              d3Block.select(".not-overlay .text").text(d.name);
+            });
+
+             d3Block.select(".back-to-chart")
+                      .on("click", function(d){
+                        d3.event.stopPropagation();
+                        that.removeOverlay();
+                  });
+
+              });
       }
 
-    dataJoin
-     .each(function(d) {
-       //for drag and drop
-       d.originalTransform = {x: x(d.y) + 3 * d.depth, y: y(d.x)};
-     })
-     .style("transform", function(d, i) {
-         return "translate(" + (x(d.y) + 3 * d.depth) + "px," + (y(d.x)) + "px)";
-       })
-    // all blocks are the same width, all should have the same dy (so like .2 * width)
-     .style("width", currentTopLevel.dy * kx + "px")
-    //dx is the hierarchical height of the object (between 0 and 1), times it by ky (height * toplevel.dx)
-     .style("height", function(d) {
-       //parent shouldnt be taller than toplevel
-       if (this === parentNode){
-         return currentTopLevel.dx * ky -3 + "px";
-       }
-       return d.dx * ky -3 +"px";
-      })
-     //take care of special style for top level
-     .classed("add-top-level-block", function(d){
-       if (d.depth == 0) return true;
-     })
-//hide blocks that are higher in the hierarchy than currentTopLevel
-     .style("opacity", function(d){
-       if (!_.contains(currentChildren, this)){
-         return 0;
-       }
-       return 1;
-     });
+      //end addButtonEvents
 
-    //remove exit selection
-    dataJoin.exit().remove();
+      enter.select(".text")
+          .text(function(d) { return d.name; });
+
+    //override h to ensure readable, scrollable graph
+    if (!that.state.compact){
+      var minHeight = 25,
+          smallestDX = d3.min(dataJoin[0].map(function(n){return n.__data__.dx})),
+          totalHeight  = minHeight/smallestDX,
+          h = d3.max([totalHeight, h]);
+    }
+
+    var  ky = h / currentTopLevel.dx,
+        y = d3.scale.linear().domain([currentTopLevel.x, currentTopLevel.x + currentTopLevel.dx])
+                              .range([0, h]);
+
+    //set the height of the chart
+    d3.select(".top-level-block").style("height", (h -4) + "px");
+    //wrapper div prevents y overflow while allowing x overflow
+    d3.select(".chart").style("height", h + "px");
+
+    dataJoin
+    //for enter selection
+    .style("opacity", null)
+     .classed("has-children", function(d){
+       if (d.children && d.children.length){
+         return true
+       }
+     })
+     .classed("hovered", false);
+
+
+    //these transitions require js to look good
+
+        var transition = dataJoin.transition()
+        .duration(400)
+         // all blocks are the same width, all should have the same y (so like .2 * width)
+         .style("width", (1/numLevels * w - 3) + "px")
+          //dx is the hierarchical height of the object (between 0 and 1), times it by ky (height * toplevel.dx)
+         .style("height", function(d) {
+             //parent shouldnt be taller than toplevel
+             var height = d.dx * ky - 3;
+             d3.select(this).classed("no-text", function(d){
+               if (height < 10 ){
+                 return true;
+               }
+           });
+           return height + "px";
+       });
+
+    function translateTween (d){
+      //when top level is "home", still act like it is the second level
+      var start = this.style.transform || 'translate(0px,0px)',
+          currentDepth = currentTopLevel.depth == 0 ? 1 : currentTopLevel.depth,
+          blockWidth = 1/numLevels * w,
+          blockDepth = d.depth - currentDepth,
+          xTransform = blockWidth * blockDepth + topLevelBlockWidth,
+          yTransform = y(d.x),
+          end = "translate(" + xTransform + "px," + yTransform + "px)";
+          //for drag and drop
+          d.originalTransform = {x : xTransform, y : yTransform};
+
+      return d3.interpolateString(start, end);
+
+    }
+
+    transition.styleTween('transform', translateTween);
 
     var drag = d3.behavior.drag()
                 .origin(function(d){
                   return {x : d.originalTransform.x , y : d.originalTransform.y}
+                })
+                .on("dragstart", function(){
+                  if (d3.select(this).classed("show-all-text")) return;
+                  d3.select(this).classed("being-dragged", true);
+                  this.__data__.dragged = true;
                 })
                 .on('drag', function(d) {
                   var childNodes = getAllChildNodes(this);
@@ -308,83 +554,50 @@ var nodeData = partition.nodes(this.data.root);
                      return "translate(" + ( d.originalTransform.x + diff.x) + "px, " + (d.originalTransform.y + diff.y ) + "px)";
                    })
                    .classed("being-dragged", true);
-                   highlightHoveredRect(d3.event);
+                   highlightHoveredRect(d3.event, this);
                   })
                 .on('dragend', function(){
-                  var block = vis.selectAll(".block"),
-                      hovered = block.filter(function(d){
-                        return d3.select(this).classed("hover-add");
-                      });
+                  var node = this;
+                  var block = d3.selectAll(".inclusive-block"),
+                  hovered = [].slice.apply(document.querySelectorAll(".inclusive-block"))
+                  .filter(function(el){ if (el.classList.contains("hover-add") ){
+                    return true
+                  }});
 
-                  if ( hovered[0].length && !_.contains(hovered[0][0].__data__.children, this.__data__ )){
-                    //it's already the parent
-                      removeNode(this.__data__, that.data.root);
-                      addNode(this.__data__, hovered[0][0].__data__, that.data.root);
-                      that.update();
+                  if ( hovered.length ){
+                    //top level block doesnt have data
+                    var hoveredData = hovered[0].classList.contains("top-level-block")? that.data.root : hovered[0].__data__;
+                    removeNode(this.__data__, that.data.root);
+                    addNode(this.__data__, hoveredData, that.data.root);
+                    that.update();
                   }
                   else {
                     //put the dragged elements back where they came from
-                    vis.selectAll(".being-dragged")
-                    .style("transform", function(d) {
-                      return "translate(" + (x(d.y) + 3 * d.depth) + "px," + (y(d.x)) + "px)";
-                  })
+                    d3El.selectAll(".being-dragged")
+                    .transition()
+                    .styleTween('transform', translateTween);
                 }
                   block.classed({"being-dragged" : false, "hover-add" : false});
+                   var vals = this.style.transform.match(/\d+.?\d*px/g);
+                  _.each(vals, function(v, i){
+                    vals[i] = parseFloat(v.split("px")[0])
+                  });
+                  if (vals[0] - this.__data__.originalTransform.x >  3
+                    || vals[0] - this.__data__.originalTransform.x < -3
+                    || vals[1] - this.__data__.originalTransform.y > 3
+                    || vals[1] - this.__data__.originalTransform.y < -3
+                   ){
+                  setTimeout(function(){
+                    node.__data__.dragged = false
+                  }, 500);
+                  }
+                  else {
+                  node.__data__.dragged = false
+                  }
                 });
 
-    var dragToAdd = d3.behavior.drag()
-                            .on("dragstart", function(){
-                              d3El.select(".card-creation-container").classed("transformed-up", false);
-                              d3.select(this).classed("being-dragged", true);
-                            })
-                            .on('drag', function(d) {
-
-                              var translateX =  d3.event.x,
-                                  translateY = d3.event.y;
-
-                               d3.select(this).style("transform", "translate(" + translateX + "px," +  translateY + "px)");
-                               highlightHoveredRect(d3.event);
-                              })
-                            .on('dragend', function(){
-
-                              var block = vis.selectAll(".block"),
-                                  hovered = block.filter(function(d){
-                                  return d3.select(this).classed("hover-add");
-                              });
-
-                              document.querySelector(".to-add-container").appendChild(this);
-
-                              if ( hovered[0].length ){
-                                that.data.toAdd = _.without(that.data.toAdd, this.__data__);
-                                addNode(this.__data__, hovered[0][0].__data__, that.data.root);
-                                that.update();
-                              }
-                              else {
-                                //put the dragged elements back where they came from
-                                d3El.selectAll(".being-dragged")
-                                .classed("being-dragged", false)
-                                .style("transform", function(d) {
-                                  return "translate(0px,0px)";
-                              });
-                            }
-                            block.classed({"being-dragged" : false, "hover-add" : false});
-                            });
-
-
-     d3El.selectAll(".to-add-block").on("mousedown", function(d){
-       //append to chart
-          var initialPosition = this.getBoundingClientRect();
-          document.querySelector("#content").appendChild(this);
-           var newPosition = this.getBoundingClientRect();
-           //make adjustments
-           var origin = [initialPosition.left - newPosition.left, initialPosition.top - newPosition.top];
-           dragToAdd.origin(function(){return {x : origin[0], y : origin[1]}});
-           d3.select(this).style("transform", "translate(" + origin[0] + "px," + origin[1] + "px)");
-           //set drag behavior origin
-     }).call(dragToAdd);
-     d3El.selectAll(".block").call(drag);
+    enter.call(drag);
 }
-
 
 EditablePartition.prototype.update = function(){
 
@@ -409,19 +622,54 @@ function removeParents(data){
   deleteParent(data.children);
 }
 
+function cleanDataForJSONExport(data){
+    var newData;
 
-  function getAllChildNodes(node){
-    var childIds = [];
+    function without(obj){
+      return _.pick(obj, ["name", "size", "id"]);
+    }
+
+    function clean(node, list){
+      //cache list of children
+      var children = node.children;
+      if (!list){
+        //it's the top level
+          newData = without(node);
+          node = newData;
+      } else {
+        node = without(node);
+        list.push(node);
+      }
+
+      node.children = [];
+
+      _.each(children, function(c){
+        clean(c, node.children);
+      });
+
+    }
+    clean(data);
+    return newData;
+}
+
+  function getAllChildren(data){
+    var allChildren = [];
     function appendChildren(children){
       _.each(children, function(c){
-        childIds.push(c.id);
+        allChildren.push(c);
         if (c.children && c.children.length){
           appendChildren(c.children)
         }
       })
     }
-    appendChildren(node.__data__.children);
-    return vis.selectAll(".block").filter(function(d){
+    appendChildren(data.children);
+    return allChildren;
+  }
+
+  function getAllChildNodes(node){
+    var allChildren = getAllChildren(node.__data__),
+        childIds = _.map(allChildren, function(c){return c.id});
+    return d3.selectAll(".block").filter(function(d){
       if (_.contains(childIds, d.id)) return true;
     })[0];
   }
@@ -475,7 +723,7 @@ function removeParents(data){
 
 
   function getHovered(e){
-    var block = vis.selectAll(".block");
+    var block = d3.selectAll(".inclusive-block");
     var mouseX = e.sourceEvent.clientX, mouseY =  e.sourceEvent.clientY;
 
     return block.filter(function(d){
@@ -493,10 +741,10 @@ function removeParents(data){
     });
   }
 
-  function highlightHoveredRect(e){
-    var block = vis.selectAll(".block"),
-        hoveredRect = getHovered.apply(undefined,arguments);
-        block.classed("hover-add", false);
+  function highlightHoveredRect(e, node){
+    var block = d3.selectAll(".inclusive-block");
+    var hoveredRect = getHovered.apply(undefined, arguments);
+    block.classed("hover-add", false);
 
       if (hoveredRect){
         hoveredRect.classed("hover-add", true);
