@@ -1,6 +1,15 @@
 @import "../../node_modules/bourbon/app/assets/stylesheets/_bourbon";
-
 @import "./drop";
+
+
+$primary : #5F7DF6;
+$background : #fff;
+$block :  #5881FF;
+$text : gray;
+$success : #5ED8A8;
+$warning : #E57373;
+$highlight-color: #4FC3F7;
+
 
 html {
   box-sizing: border-box;
@@ -14,21 +23,11 @@ html, body {
 }
 
 
-$primary : #5F7DF6;
-$background : #fff;
-$block :  #5881FF;
-
-$text : gray;
-$success : #5ED8A8;
-$warning : #E57373;
-$highlight-color: #4FC3F7;
-
-
 body {
   color: $text;
   font-weight:bold;
   font-family: Verdana, sans-serif;
-  font-size : 14px;
+  font-size : 12px;
   max-width: 100%;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -42,10 +41,6 @@ i.fa-sitemap {
   @include transform(rotate(-90deg));
 }
 
-
-.download-as-json {
-
-}
 
 .drop-content {
   min-height: 55px;
@@ -92,7 +87,7 @@ i.fa-sitemap {
   }
 
 }
-.dropdown-button {
+.subtle-button {
   @extend .btn;
   color: $success;
   background: #484848;
@@ -104,7 +99,8 @@ i.fa-sitemap {
 .top-row {
   position: fixed;
   width: 100%;
-  z-index: 9;
+  z-index: 5;
+  height: 100px;
 }
 
 
@@ -131,19 +127,20 @@ overflow: hidden;
 #content.overlay {
   &:before{
     opacity:1;
-    z-index:3;
+    z-index:6;
   }
 }
 
 
   .card-creation-dropdown {
     text-align: center;
+    //prevent from lying on top of chart
     padding: 10px;
     background: rgba(0, 0, 0, 0.85);
     z-index: 1;
     position: relative;
-    @include transition(transform .4s ease-in-out, opacity .3s ease-in);
     opacity: 0;
+    @include transition(transform .4s ease-in-out, opacity .3s ease-in);
     @include transform(translateY(-130vh));
 
   textarea {
@@ -159,7 +156,16 @@ overflow: hidden;
     }
 }
 
-
+.intro-instructions {
+  width: 50%;
+  margin: auto;
+  min-width: 500px;
+  background-color: #fff;
+  margin-top: 20vh;
+  b {
+    color: darken($text, 30%);
+  }
+}
 .heading {
   background-color: #2D2D2D;
   color: lighten($primary, 10%);
@@ -194,10 +200,13 @@ overflow: hidden;
 
 .toolbar {
   height:50px;
+  width: 100%;
+  background: #404040;
+  position: relative;
+  z-index: 2;
+
+
   ul {
-    height: 50px;
-    width: 100%;
-    background: #404040;
     list-style: none;
     margin:0;
     z-index: 2;
@@ -229,8 +238,8 @@ overflow: hidden;
 #content.show-create-dropdown {
 
   .card-creation-dropdown {
-    opacity: 1;
     @include transform(translateY(0vh));
+    opacity: 1;
   }
 
   .toggle-creation-container i {
@@ -258,6 +267,7 @@ overflow: hidden;
   z-index: 2;
   position: relative;
   float: left;
+  min-height: 520px;
 
   i.fa-home {
     font-size: 2em;
@@ -283,7 +293,7 @@ i.fa-home.active {
     width: 377px;
     position: relative;
     left: -170px;
-    top: 145px;
+    top: 170px;
     font-style: italic;
   }
 
@@ -306,12 +316,12 @@ i.fa-home.active {
 
 .block {
 
- @include transition(background-color .3s ease-in, opacity .5s, box-shadow .3s);
+ @include transition(background-color .2s ease-in, opacity .5s);
+ will-change: transform;
 color: #fff;
 @extend .container;
 position:absolute;
 z-index: 1;
-display: flex;
 align-items: center;
 cursor: pointer;
 
@@ -332,12 +342,11 @@ cursor: pointer;
 }
 
 &.has-children:not(.card-overlay):hover {
-  background-color: lighten($primary, 1%);
+  background-color: lighten($primary, 4%);
 }
 
 .not-overlay {
   width: 100%;
-  white-space: nowrap;
   &:hover {
     opacity: .85;
   }
@@ -346,14 +355,13 @@ cursor: pointer;
 .text {
   display: block;
   width: 90%;
-  margin: auto;
+  max-height:90%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   text-overflow: ellipsis;
   overflow: hidden;
-  }
-
-&:hover {
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.42);
-
   }
 }
 
@@ -440,6 +448,7 @@ button.show-all-text {
   z-index: 2;
   position:relative;
   min-height: 100px;
+  float:left;
 
   button.delete {
     position: absolute;
@@ -450,14 +459,12 @@ button.show-all-text {
 
 
 .to-add-container {
-  display: flex;
-  flex-wrap: wrap;
   min-height: 100px;
 }
 
 .card-overlay {
   cursor: default;
-  z-index: 5;
+  z-index: 7;
 
   .text {
     display: block;
@@ -522,6 +529,7 @@ background :  $warning !important;
 .being-dragged {
   opacity: .75 !important;
   z-index: 4;
+  @include transition(transform 0s);
 }
 
 .hidden {
@@ -535,6 +543,28 @@ background :  $warning !important;
 .block:not(.has-children) {
   background: desaturate($block, 55%);
   &:not(.card-overlay):hover {
-    background-color: lighten(desaturate($block, 55%), 3%);
+    background-color: lighten(desaturate($block, 60%), 5%);
+  }
+}
+
+
+
+.btn-text {
+  display: none;
+}
+
+
+@media screen and (min-width: 520px){
+
+  body {
+    font-size: 14px;
+  }
+
+  .pull-right-large {
+    float: right;
+  }
+
+  .btn-text {
+    display: inline-block;
   }
 }
