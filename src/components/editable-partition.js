@@ -40,8 +40,6 @@ function EditablePartition(config) {
     toAdd: [],
   }, this.data);
 
-  this.state.currentTopLevel = null;
-
 }
 
 //called only 1x, setting up the graph
@@ -68,7 +66,7 @@ EditablePartition.prototype.render = function() {
 
   d3El.select(".create-block textarea")
     .on("keypress", function(e) {
-      if (d3.event.which == 13) {
+      if (d3.event.which === 13) {
         var t = this;
         var text = d3.select(this.parentElement).select("textarea")[0][0].value;
         that.addBlock(text);
@@ -77,8 +75,8 @@ EditablePartition.prototype.render = function() {
         this.innerHTML = "";
         setTimeout(function() {
           //so dumb, why is this necessary
-          t.focus()
-        }, 50)
+          t.focus();
+        }, 50);
       }
     });
 
@@ -162,7 +160,7 @@ EditablePartition.prototype.render = function() {
   });
 
   d3El.select(".load-sample-data").on("click", function(){
-        that.data.root = flare;
+        that.data.root = JSON.parse(JSON.stringify(flare));
         that.state.currentTopLevel = null;
         that.update();
   });
@@ -226,6 +224,7 @@ function updateOverlayState(){
 
     d3Block
       .classed("card-overlay", true)
+      .classed("show-all-hover", false)
       .transition()
       .style("width", "600px")
       .style("height", "400px")
@@ -579,6 +578,12 @@ function updateChart() {
       });
 
     buttonRow.select(".show-all-text")
+    .on("mouseenter", function(d) {
+      d3.select(blockEl).classed("show-all-hover", true);
+    })
+    .on("mouseleave", function(d) {
+      d3.select(blockEl).classed("show-all-hover", false);
+    })
       .on("click", function() {
         closeDrops(blockEl);
         that.state.cardOverlay = blockEl;

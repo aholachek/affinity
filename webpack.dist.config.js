@@ -29,9 +29,8 @@ module.exports = {
     new webpack.optimize.DedupePlugin(),
     new webpack.optimize.UglifyJsPlugin(),
     new webpack.optimize.OccurenceOrderPlugin(),
-    new webpack.optimize.AggressiveMergingPlugin(),
-    new webpack.NoErrorsPlugin()
-  ],
+    new webpack.optimize.AggressiveMergingPlugin()
+    ],
 
   resolve: {
     extensions: ['', '.js', '.jsx'],
@@ -50,7 +49,12 @@ module.exports = {
       exclude: /node_modules/,
       loader: 'eslint-loader'
     }],
-    loaders: [{
+    loaders: [
+      {
+       test: /\.handlebars$/,
+       loader: "handlebars-loader"
+     },
+     {
       test: /\.(js|jsx)$/,
       exclude: /node_modules/,
       loader: 'babel-loader'

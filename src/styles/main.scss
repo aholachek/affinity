@@ -8,7 +8,7 @@ $block: #5881ff;
 $text: gray;
 $success: #5ed8a8;
 $warning: #e57373;
-$highlight-color: #4fc3f7;
+$highlight-color: #BA68C8;
 
 /* base rules */
 html {
@@ -373,7 +373,7 @@ button.show-all-text {
     color: $block;
     @extend %action-button;
     &:hover {
-        color: darken($block, 10%);
+        color: darken($block, 6%);
     }
 }
 .to-add-block {
