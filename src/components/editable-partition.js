@@ -451,7 +451,7 @@ function updateChart() {
 
   var block = d3El.selectAll(".block"),
     that = this,
-    minWidth = 80,
+    minWidth = 60,
     maxLevels = Math.floor(w / minWidth),
     currentTopLevel = _.findWhere(nodeData, {
           id: that.state.currentTopLevel
@@ -462,7 +462,9 @@ function updateChart() {
      return
    }
 
-  nodeData = _.filter(nodeData, function(f) {
+   var nodeDataToRender = getAllChildren(currentTopLevel);
+
+  nodeDataToRender = _.filter(nodeDataToRender, function(f) {
     //if hierarchy goes too far, just show top n levels
     //remember that depth is zero indexed
     if (f.depth - currentTopLevel.depth < maxLevels - 1) {
@@ -473,7 +475,7 @@ function updateChart() {
   var dataJoin = block.data(nodeData, function(d) {
       return d.id
     }),
-    numLevels = _.max(nodeData.map(function(n) {
+    numLevels = _.max(nodeDataToRender.map(function(n) {
       return n.depth
     })) - currentTopLevel.depth;
   numLevels = currentTopLevel.depth > 0 ? numLevels += 1 : numLevels;
